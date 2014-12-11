@@ -1,0 +1,15 @@
+# Ignore system files
+.DS_Store
+/.DS_Store$
+Thumbs.db
+
+
+# Exclude working folders
+**/bin/
+**/obj/
+
+
+# ignore IDE related files
+*.csproj
+*.suo
+*.sln
