@@ -80,7 +80,6 @@ namespace Strata.Util.IO {
         }
         #endregion
 
-
         #region -------- PUBLIC - SetAttribute --------
         /// <summary>
         /// Add an attribute to the directory
@@ -90,7 +89,6 @@ namespace Strata.Util.IO {
             info.Attributes = info.Attributes | attribute;
         }
         #endregion
-
 
         #region -------- PUBLIC - Create --------
         /// <summary>

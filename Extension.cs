@@ -7,24 +7,6 @@ using Strata.Util;
 
 namespace Strata {
     public partial class Extension : Strata.Context, IDisposable{
-        //private Core _core;
-        //public Extension() {
-        //    //this._core = Context.Current;
-        //}
-
-
-        //public Database Database {
-        //    get { return this.Context.Database; }
-        //}
-
-        ////public Database Database(string name) {
-        ////    this.Context.Databases[]
-        ////}
-
-        //public Core Context {
-        //    get { return Current.Context; }
-        //}
-
         public Query Query(string sql) {
             return Context.Database.Query(sql);
         }

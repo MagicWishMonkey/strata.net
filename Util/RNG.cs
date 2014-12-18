@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 namespace Strata.Util {
     public sealed class RNG {
@@ -10,6 +11,21 @@ namespace Strata.Util {
             _rand = new Random(Guid.NewGuid().GetHashCode());
         }
         #endregion
+
+
+
+        //public static int PickIndex(ArrayList array) {
+        //    var ix = _rand.Next(0, array.Count);
+        //    return ix;
+        //}
+        public static int PickIndex(object[] array) {
+            var ix = _rand.Next(0, array.Length);
+            return ix;
+        }
+        public static int PickIndex(IList lst) {
+            var ix = _rand.Next(0, lst.Count);
+            return ix;
+        }
 
         #region -------- PUBLIC - Random/RandomDouble --------
         public static int Random(int max) {
@@ -24,7 +40,6 @@ namespace Strata.Util {
                 return _rand.Next(min, max);
             }
         }
-
 
         public static double RandomDouble(int max) {
             return RandomDouble(0, max);

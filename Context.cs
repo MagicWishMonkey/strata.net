@@ -24,10 +24,18 @@ namespace Strata {
         #endregion
 
 
+        public static Query Query(string sql) {
+            return Database.Query(sql);
+        }
+
+        public static Query Query(string sql, object obj) {
+            return Database.Query(sql, obj);
+        }
 
         public static Database Database {
             get { return Context.Core.Database; }
         }
+
 
         //public Database Database(string name) {
         //    this.Context.Core.Databases[]

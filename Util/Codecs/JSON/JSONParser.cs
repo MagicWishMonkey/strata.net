@@ -181,9 +181,12 @@ namespace Strata.Util.Codecs.JSON {
                     this.ClearToken();
                     return null;
             }
-
+            
+            //var window = this.Window;
             throw new Exception("Unrecognized token at index" + this._ix);
         }
+
+        
 
         private Dictionary<string, dynamic> ParseObject() {
             Dictionary<string, dynamic> table = new Dictionary<string, dynamic>();
@@ -312,6 +315,26 @@ namespace Strata.Util.Codecs.JSON {
                 return l;
             }
             return num;
+        }
+
+
+        public string Window {
+            get {
+                var ix = this._ix;
+                var a = (ix - 15);
+                var b = (ix + 15);
+                if (a < 0)
+                    a = 0;
+                if (b >= this._max)
+                    b = this._max - 1;
+
+                var buffer = new StringBuilder();
+                for (var i = a; i < b; i++) {
+                    buffer.Append(this._json[i]);
+                }
+                var txt = buffer.ToString();
+                return txt;
+            }
         }
     }
 }
