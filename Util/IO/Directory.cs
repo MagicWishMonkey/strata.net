@@ -92,8 +92,6 @@ namespace Strata.Util.IO {
         #endregion
 
 
-
-
         #region -------- PUBLIC - Create --------
         /// <summary>
         /// Create the directory if it doesnt exist
@@ -288,6 +286,15 @@ namespace Strata.Util.IO {
         #endregion
 
         #region -------- PUBLIC - GetFile --------
+        public File File(string name) {
+            Uri newUri = new Uri(this.Uri, name);
+            if (this.IsWebUri)
+                return new File(newUri.AbsoluteUri);
+
+            return new File(newUri.LocalPath);
+        }
+
+
         /// <summary>
         /// Return a File from the name provided
         /// </summary>

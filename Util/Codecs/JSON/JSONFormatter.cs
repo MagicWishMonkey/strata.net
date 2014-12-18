@@ -13,7 +13,8 @@ namespace Strata.Util.Codecs.JSON {
         internal bool UseUTCDateTime = false;
 
         public static object Read(string data) {
-            return new JSONFormatter().DecodeJSON(data);
+            return JSONParser.Parse(data);
+            //return new JSONFormatter().DecodeJSON(data);
         }
 
         public static T Read<T>(string data) {
@@ -23,7 +24,8 @@ namespace Strata.Util.Codecs.JSON {
         }
 
         internal object DecodeJSON(string data) {
-            return new JSONReader(data).Decode();
+            return JSONParser.Parse(data);
+            //return new JSONReader(data).Decode();
         }
 
         public static string Write(object obj) {

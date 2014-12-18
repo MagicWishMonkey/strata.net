@@ -18,17 +18,25 @@ namespace Strata.DB {
             return this;
         }
 
-
         public Query Query(string sql, params KeyValuePair<string, object>[] parameters) {
-            var query = new Query(sql, parameters);
+            var query = QueryFactory.Parse(sql);
             query.Link(this.ID);
+            if (parameters != null && parameters.Length > 0)
+                query.Bind(parameters);
             return query;
         }
 
+        public Query Query(string sql, object obj) {
+            var query = QueryFactory.Parse(sql);
+            query.Link(this.ID);
+            query.Bind(obj);
+            return query;
+        }
 
         public DataTable SelectTable(string sql) {
             return this.SelectTable(new Query(sql));
         }
+
         public DataTable SelectTable(Query query) {
             using (var txn = new DatabaseTransaction(this._driver)) {
                 return txn.SelectTable(query);
@@ -46,6 +54,17 @@ namespace Strata.DB {
             }
         }
 
+        //public List<T> Select<T>(Query query) {
+
+        //    //Func<Dictionary<string, dynamic>, T> factory = Strata.Util.Toolkit.Curry(
+        //    //    (Func<Type, Dictionary<string, dynamic>, T>)Model.Construct, this.ModelClass
+        //    //);
+
+        //    using (var txn = new DatabaseTransaction(this._driver)) {
+        //        var records = txn.SelectTable(query).ToRecords();
+        //    }
+        //}
+
         public List<dynamic> Scalars(string sql) {
             return this.Scalars(new Query(sql));
         }
@@ -56,32 +75,68 @@ namespace Strata.DB {
             }
         }
 
+        public List<T> Scalars<T>(string sql) {
+            return this.Scalars<T>(new Query(sql));
+        }
+
+        public List<T> Scalars<T>(Query query) {
+            using (var txn = new DatabaseTransaction(this._driver)) {
+                var scalars = txn.SelectTable(query).ToScalars();
+                try { 
+                    var converted = scalars.ConvertAll(
+                        new Converter<dynamic, T>(
+                             delegate(dynamic x) {
+                                 var o = (T)x;
+                                 return o;
+                             }   
+                        )
+                     );
+                    return converted;
+                } catch (Exception ex) {
+                    scalars = scalars.Where(x => x != null).ToList();
+                    var converted = scalars.ConvertAll(
+                        new Converter<dynamic, T>(
+                             delegate(dynamic x) {
+                                 var o = (T)x;
+                                 return o;
+                             }
+                        )
+                     );
+                    return converted;
+                }
+            }
+        }
+
         #region -------- PUBLIC - Update/Insert/Execute --------
-        public void Update(string sql) {
+        public int Update(string sql) {
             if (String.IsNullOrEmpty(sql))
                 throw new ArgumentNullException("The sql parameter is null/empty!");
 
-            this.Execute(new Query(sql));
+            var o = this.Execute(new Query(sql));
+            return (o is int) ? (int)o : 0;
         }
-        public void Update(Query query) {
+        public int Update(Query query) {
             if (query == null)
                 throw new ArgumentNullException("The query parameter is null!");
 
-            this.Execute(query);
+            var o = this.Execute(query);
+            return (o is int) ? (int)o : 0;
         }
 
-        public object Insert(string sql, params KeyValuePair<string, object>[] parameters) {
+        public int Insert(string sql, params KeyValuePair<string, object>[] parameters) {
             if (String.IsNullOrEmpty(sql))
                 throw new ArgumentNullException("The sql parameter is null/empty!");
-
-            return this.Execute(new Query(sql, parameters));
+            
+            var o = this.Execute(this.Query(sql, parameters));
+            return (o is int) ? (int)o : 0;
         }
-        
-        public object Insert(Query query) {
+
+        public int Insert(Query query) {
             if (query == null)
                 throw new ArgumentNullException("The query parameter is null!");
 
-            return this.Execute(query);
+            var o = this.Execute(query);
+            return (o is int) ? (int)o : 0;
         }
 
         public object Execute(string sql) {
@@ -173,9 +228,14 @@ namespace Strata.DB {
             if(config == null)
                 config = new DatabaseConfig(server, port, dbname, username, password);
             config.Label = "default";
-            var dbDriver = BuildDriver(driver, config);
+            config.Driver = driver;
+            return Database.Connect(config);
+        }
+        public static Database Connect(DatabaseConfig config) {
+            var dbDriver = BuildDriver(config.Driver, config);
             return Register(new Database(dbDriver));
         }
+
         private static AbstractDriver BuildDriver(string name, DatabaseConfig config) {
             var type = name.Trim().ToLower();
             if (type == "sqlserver")

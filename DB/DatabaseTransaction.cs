@@ -33,6 +33,8 @@ namespace Strata.DB {
 
         #region -------- PUBLIC - Select/SelectTable --------
         public DataSet Select(Query query) {
+            Log.Debug(query.Sql);
+
             var cmd = this.CreateCommand(query);
             var adapter = this.CreateAdapter(cmd);
             DataSet ds = new DataSet();
@@ -58,6 +60,8 @@ namespace Strata.DB {
 
         #region -------- PUBLIC - Execute --------
         public object Execute(Query query) {
+            Log.Debug(query.Sql);
+
             object result = null;
             IDbCommand command = this.CreateCommand(query);
             IDbConnection connection = command.Connection;
@@ -66,11 +70,14 @@ namespace Strata.DB {
                 connection.Open();
                 transaction = connection.BeginTransaction();
                 command.Transaction = transaction;
-                command.ExecuteNonQuery();
+                var id = command.ExecuteNonQuery();
                 transaction.Commit();
                 transaction = null;
-                if (query.HasOutputParams)
+                if (query.HasOutputParams) { 
                     result = command.GetCommandOutputs();
+                    return result;
+                }
+                return id;
             } catch (Exception ex) {
                 //this.Source.Driver.HandleException(ex);
                 if (transaction != null)

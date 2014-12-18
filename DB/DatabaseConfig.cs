@@ -10,7 +10,6 @@ namespace Strata.DB {
         private int _port = 0;
         private string _username = null;
         private string _password = null;
-        //private Func<AbstractDriver> _factory = null;
         public DatabaseConfig(string uri) {
             this.Uri = uri;
         }
@@ -32,6 +31,49 @@ namespace Strata.DB {
             this._password = password;
         }
 
+        public static DatabaseConfig Parse(string label, Dictionary<string, dynamic> settings) {
+            var config = DatabaseConfig.Parse(settings);
+            config.Label = label;
+            return config;
+        }
+        public static DatabaseConfig Parse(Dictionary<string, dynamic> settings) {
+            var driver = settings["driver"];
+            var server = (string)settings["server"];
+            var database = settings["database"];
+            var config = new DatabaseConfig(server, database);
+            config.Driver = (string)driver;
+
+            var ix = server.IndexOf(":");
+            if (ix > -1) {
+                var port = server.Substring(ix + 1);
+                server = server.Substring(0, ix);
+                config._port = Int32.Parse(port);
+                config._server = server;
+            }
+
+            try {
+                var dsn = settings["dsn"];
+                config.DSN = dsn;
+            } catch (Exception ex) { }
+            
+            try{
+                var username = settings["username"];
+                config._username = username;
+            }catch(Exception ex){}
+
+            try{
+                var password = settings["password"];
+                config._password = password;
+            }catch(Exception ex){}
+
+            try {
+                var port = (int)settings["port"];
+                config._port = port;
+            } catch (Exception ex) { }
+
+            return config;
+        }
+
 
         //internal DatabaseConfig BindDriver(AbstractDriver driver) {
         //    this._driver = driver;
@@ -44,9 +86,14 @@ namespace Strata.DB {
 
 
         #region -------- PROPERTIES --------
-        internal string Label {
+        public string Driver {
             get;
-            set;
+            internal set;
+        }
+
+        public string Label {
+            get;
+            internal set;
         }
 
         internal string Uri {
@@ -54,17 +101,17 @@ namespace Strata.DB {
             set;
         }
 
-        //internal AbstractDriver DriverClass{
-        //    get;
-        //    set;
-        //}
-
         internal string ConnectionString {
             get;
             set;
         }
 
         internal int HashCode {
+            get;
+            set;
+        }
+
+        internal string DSN {
             get;
             set;
         }

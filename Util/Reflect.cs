@@ -6,14 +6,101 @@ using System.Text;
 using System.Reflection;
 
 namespace Strata.Util {
-    public static class Reflect {
+    public class Reflect {
+        private object _instance;
+        private Type _type;
+        public Reflect(object instance) {
+            this._instance = instance;
+            this._type = instance.GetType();
+        }
+
+        public void TrySet(string propertyName, object value){
+            this.Set(propertyName, value, true);
+        }
+        public void Set(string propertyName, object value, bool ignoreErrors = false) {
+            var type = this._type;
+            var instance = this._instance;
+            var field = type.GetField(propertyName);
+            if (field != null) {
+                field.SetValue(instance, value);
+                return;
+            }
+
+            var property = type.GetProperty(propertyName);
+            if (property != null) {
+                property.SetValue(instance, value);
+                return;
+            }
+                
+            if(ignoreErrors)
+                return;
+            throw new Exception("The property could not be found.");
+        }
+
+        public object Get(string propertyName) {
+            var type = this._type;
+            var instance = this._instance;
+            var field = type.GetField(propertyName);
+            if (field != null) {
+                return field.GetValue(instance);
+            }
+
+            var property = type.GetProperty(propertyName);
+            if (property == null)
+                throw new Exception("The property could not be found.");
+            return property.GetValue(instance);
+        }
+
+        public object this[string property] {
+            get { return this.Get(property); }
+            set { this.Set(property, value); }
+        }
+
+        //public static Dictionary<string, dynamic> Objectify(object target) {
+        //    var bucket = new Dictionary<string, dynamic>();
+
+        //    var type = target.GetType();
+        //    FieldInfo[] fields = type.GetFields();
+        //    foreach (var field in fields) {
+        //        var name = field.Name;
+        //        var value = field.GetValue(target);
+        //        if (value == null) {
+        //            bucket[name] = value;
+        //            continue;
+        //        }
+        //        if (Types.IsPrimitive(value)) {
+        //            if (value == null) {
+        //                if (Types.IsNumeric(value)) {
+        //                    continue;
+        //                }
+        //            }
+        //            bucket[name] = value;
+        //            continue;
+        //        }
+        //}
+
         public static Dictionary<string, dynamic> Decompose(object target) {
             var bucket = new Dictionary<string, dynamic>();
             var type = target.GetType();
-            FieldInfo[] fields = type.GetFields();
-            foreach (var field in fields) {
+
+            var attributes = new List<KeyValuePair<string, dynamic>>();
+            PropertyInfo[] properties = type.GetProperties();
+            foreach (var field in properties) {
                 var name = field.Name;
                 var value = field.GetValue(target);
+                attributes.Add(new KeyValuePair<string, dynamic>(name, value));
+            }
+
+            FieldInfo[] fields = type.GetFields();
+            foreach (var field in properties) {
+                var name = field.Name;
+                var value = field.GetValue(target);
+                attributes.Add(new KeyValuePair<string, dynamic>(name, value));
+            }
+
+            foreach (var attribute in attributes) {
+                var name = attribute.Key;
+                var value = attribute.Value;
                 if (value == null) {
                     bucket[name] = value;
                     continue;

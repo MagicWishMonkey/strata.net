@@ -7,7 +7,7 @@ using System.Runtime.Remoting.Messaging;
 using System.Text;
 
 
-namespace Strata.Util {
+namespace Strata {
     public static class Log {
         #region -------- STATIC - WRITE OBJECTS --------
         [Conditional("TRACE")]
@@ -40,8 +40,42 @@ namespace Strata.Util {
         public static void Trace(object msg) {
             Write(Convert.ToString(msg));
         }
+        #endregion
 
-        [Conditional("TRACE")]
+
+
+        #region -------- STATIC - DEBUG --------
+        public static void Debug() {
+            Trace("");
+        }
+
+        public static void Debug(Exception ex) {
+            string msg = (ex == null) ? "" : ex.Message;
+            Write(msg);
+        }
+
+        public static void Debug(params object[] args) {
+            if (args == null) {
+                Write("");
+                return;
+            }
+            StringBuilder buffer = new StringBuilder();
+            for (int i = 0; i < args.Length; i++) {
+                buffer.AppendLine(Convert.ToString(args[i]));
+                if (i < args.Length - 1)
+                    buffer.AppendLine(" ");
+            }
+            Write(buffer.ToString());
+        }
+
+        public static void Debug(object msg) {
+            Write(Convert.ToString(msg));
+        }
+        #endregion
+
+
+
+        #region -------- STATIC - WRITE --------
         public static void Write(params string[] args) {
             if (args == null) {
                 Write("");
@@ -58,7 +92,6 @@ namespace Strata.Util {
             buffer = null;
         }
 
-        [Conditional("TRACE")]
         public static void Write(string msg) {
             Console.WriteLine(msg);
             // DashboardEvents.Trace(msg);

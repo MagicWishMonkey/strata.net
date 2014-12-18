@@ -283,6 +283,8 @@ namespace Strata.Util.Codecs.JSON {
         private void WriteArray(IEnumerable array) {
             Indent();
             _output.Append('[');
+            if (_Indent)
+                _output.AppendLine();
 
             bool pendingSeperator = false;
 
@@ -295,11 +297,14 @@ namespace Strata.Util.Codecs.JSON {
             }
             Indent();
             _output.Append(']');
+            if (_Indent)
+                _output.AppendLine();
         }
 
         private void WriteStringDictionary(IDictionary dic) {
             Indent();
             _output.Append('{');
+            
 
             bool pendingSeparator = false;
 
@@ -317,6 +322,8 @@ namespace Strata.Util.Codecs.JSON {
         private void WriteDictionary(IDictionary dic) {
             Indent();
             _output.Append('{');
+            if (_Indent)
+                _output.AppendLine();
 
             bool pendingSeparator = false;
 
@@ -340,17 +347,19 @@ namespace Strata.Util.Codecs.JSON {
             }
             Indent();
             _output.Append('}');
+            if (_Indent)
+                _output.AppendLine();
         }
 
         private void WriteStringFast(string s) {
-            //Indent();
+            Indent();
             _output.Append('\"');
             _output.Append(s);
             _output.Append('\"');
         }
 
         private void WriteString(string s) {
-            //Indent();
+            Indent();
             _output.Append('\"');
 
             int runIndex = -1;

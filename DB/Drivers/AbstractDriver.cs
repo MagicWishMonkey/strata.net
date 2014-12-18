@@ -84,6 +84,9 @@ namespace Strata.DB.Drivers {
             cmd.CommandType = query.Type;
             cmd.CommandText = query.Sql;
             cmd.CommandTimeout = 30;
+            if (query.Parameters == null)
+                return;
+
             foreach (var param in query.Parameters) {
                 var p = this.CreateParameter(param);
                 cmd.Parameters.Add(p);

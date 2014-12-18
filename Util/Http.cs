@@ -1,10 +1,125 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 namespace Strata.Util {
+    public class HttpRequest {
+        private string _method = "GET";
+        public HttpRequest(string url) {
+            Uri uri;
+            if(!Uri.TryCreate(url, UriKind.Absolute, out uri))
+                throw new Exception("The url is not a valid uri!");
+            this.Uri = uri;
+        }
+        public HttpRequest(Uri uri) {
+            this.Uri = uri;
+        }
+
+
+
+        #region -------- PUBLIC - Execute --------
+        public byte[] Execute(string method = null) {
+            if (!String.IsNullOrEmpty(method))
+                this.Method = method;
+            if (String.IsNullOrEmpty(this.Method))
+                this.Method = "GET";
+
+            Console.WriteLine("[" + this.Method + "] " + this.Uri.AbsoluteUri);
+
+            try {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(this.Uri);
+                request.Method = this.Method;
+                request.Timeout = (1000 * 60);
+                request.AllowAutoRedirect = true;
+                request.Accept = "*.*";
+                //request.Credentials = CredentialCache.DefaultCredentials;
+
+
+                //Accept:text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+                //Accept-Charset:ISO-8859-1,utf-8;q=0.7,*;q=0.3
+                //Accept-Encoding:gzip,deflate,sdch
+                //Accept-Language:en-US,en;q=0.8
+
+                //if (this.Body != null && this.Body.Length > 0) {
+                //    var stream = request.GetRequestStream();
+                //    stream.WriteData(this.Body);
+                //}
+
+                IAsyncResult rez = request.BeginGetResponse(null, null);
+                HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(rez);
+                string ct = response.ContentType;
+                byte[] data = ReadData(response.GetResponseStream());
+                Console.WriteLine(data.Length + " bytes received");
+                return data;
+            } catch (Exception ex) {
+                throw new Exception("Http Request Error-> " + ex.Message + "\rUrl:" + this.Uri.AbsoluteUri, ex);
+            }
+        }
+        #endregion
+
+
+        #region -------- PRIVATE HELPERS --------
+        //private static void Redirect(Stream source, Stream destination) {
+        //    byte[] block = new byte[2048];
+        //    int offset = 0;
+        //    int count = source.Read(block, 0, block.Length);
+        //    while (count > 0) {
+        //        destination.Write(block, 0, count);
+        //        offset += count;
+        //        block = new byte[1024];
+        //        count = source.Read(block, 0, block.Length);
+        //        if (count < block.Length)
+        //            Array.Resize(ref block, count);
+        //    }
+        //    destination.Flush();
+        //}
+
+        private static byte[] ReadData(System.IO.Stream stream) {
+            byte[] data = new byte[10240];
+
+            System.IO.MemoryStream buffer = new MemoryStream();
+            int size = stream.Read(data, 0, data.Length);
+            while (size > 0) {
+                int count = size;
+
+                buffer.Write(data, 0, count);
+                size = stream.Read(data, 0, data.Length);
+            }
+            data = buffer.ToArray();
+            buffer.Dispose();
+            return data;
+        }
+        #endregion
+
+
+        #region -------- PROPERTIES --------
+        public Uri Uri {
+            get;
+            set;
+        }
+        public string Method {
+            get { return this._method; }
+            set {
+                if (value == null)
+                    throw new Exception("The method value cannot be null.");
+
+                var method = value.Trim().ToUpper();
+                if (method == "GET")
+                    this._method = method;
+                else if (method == "POST")
+                    this._method = "POST";
+                else if (method == "HEAD")
+                    this._method = "HEAD";
+                else
+                    throw new Exception("The specified method type is not supported: " + value);
+            }
+        }
+        #endregion
+    }
+
     public class Http {
         #region -------- VARIABLES & CONSTRUCTOR(S) --------
         private static char[] _entityEndingChars;
@@ -74,13 +189,11 @@ namespace Strata.Util {
         }
         #endregion
 
-
         #region -------- PUBLIC - HtmlEncode --------
         public static string HtmlEncode(string s) {
             throw new NotImplementedException();
         }
         #endregion
-
 
         #region -------- PUBLIC - UrlDecode --------
         public static string UrlDecode(string s) {

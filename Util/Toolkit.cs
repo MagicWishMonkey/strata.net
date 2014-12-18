@@ -6,8 +6,10 @@ using System.Text;
 using Strata.Util.Codecs;
 using Strata.Util.Codecs.JSON;
 using Strata.Util.IO;
+
 namespace Strata.Util {
     public static class Toolkit {
+
         public static Func<TResult> Curry<T1, TResult>(Func<T1, TResult> function, T1 arg) {
             return () => function(arg);
         }
@@ -64,13 +66,35 @@ namespace Strata.Util {
         }
 
 
-        public static string Json(object obj) {
-            return JSONFormatter.Write(obj);
-        }
-
-        public static string Json(object obj, bool indent) {
+        public static string Json(object obj, bool indent = false) {
+            if (obj is Model) {
+                obj = ((Model)obj).Objectify();
+            } else if (obj is Array || obj is IList || obj is ICollection){
+                var isModel = false;
+                foreach(var o in ((IEnumerable)obj)){
+                    if(o is Model)
+                        isModel = true;
+                    break;
+                }
+                if(isModel){
+                    var models = ((IEnumerable)obj);
+                    var objects = new List<Dictionary<string, dynamic>>();
+                    foreach (var model in models) {
+                        var o = ((Model)model).Objectify();
+                        objects.Add(o);
+                    }
+                    obj = objects;
+                }
+            }
+                
+            if(!indent)
+                return JSONFormatter.Write(obj);
             return JSONFormatter.Write(obj, indent);
         }
+
+        //public static string Json(object obj, bool indent) {
+        //    return JSONFormatter.Write(obj, indent);
+        //}
 
         public static object UnJson(string data) {
             return JSONFormatter.Read(data);
@@ -79,14 +103,21 @@ namespace Strata.Util {
         public static T UnJson<T>(string data) {
             return JSONFormatter.Read<T>(data);
         }
-
-
+        
+        public static Directory Directory() {
+            var path = System.IO.Directory.GetCurrentDirectory();
+            return new Directory(path);
+        }
         public static Directory Directory(string path) {
             return new Directory(path);
         }
 
         public static File File(string path) {
             return new File(path);
+        }
+
+        public static string Hash(string data) {
+            return Strata.Crypto.Hash.MD5(data);
         }
 
         #region -------- URI METHODS --------
@@ -164,5 +195,18 @@ namespace Strata.Util {
                 }
             }
         }
+
+
+
+
+
+        public static Directory CurrentDirectory {
+            get {
+                var path = System.IO.Directory.GetCurrentDirectory();
+                return new Directory(path);
+            }
+        }
+
+
     }
 }

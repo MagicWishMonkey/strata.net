@@ -1,38 +1,98 @@
 ﻿using System;
 using System.Linq;
 using System.Data;
+using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using Strata.Util;
+
 namespace Strata.DB {
+    [Serializable]
+    public class QueryInfo {
+        private string _hash = null;
+        internal string sql;
+        internal CommandType type;
+        internal List<QueryToken> tokens;
+        public QueryInfo(string sql, List<QueryToken> tokens = null) {
+            this.sql = sql;
+            this.tokens = tokens;
+            if (sql.Trim().IndexOf(" ") < 0)///NO SPACES IN QUERY = STORED PROCEDURE CALL
+                this.type = CommandType.StoredProcedure;
+            else
+                this.type = CommandType.Text;
+        }
+
+        internal string hash {
+            get {
+                var hash = this._hash;
+                if (hash == null) {
+                    hash = Strata.Util.Toolkit.Hash(this.sql.Trim().ToLower());
+                    this._hash = hash;
+                }
+                return hash;
+            }
+            set {
+                this._hash = value;
+            }
+        }
+    }
+
     [Serializable]
     public class Query {
         #region -------- VARIABLES & CONSTRUCTOR(S) --------
+        
         private int _dbID;
-        private CommandType _type;
+        private QueryInfo _info = null;
         private string _sql;
-        //private Dictionary<string, QueryParameter> _params;
         private bool _hasOutputParams = false;
-        public Query(string sql, params KeyValuePair<string, object>[] parameters) {
-            if (String.IsNullOrEmpty(sql)) throw new ArgumentNullException("The sql parameter is null/empty!");
 
-            //this._sql = sql;
+        ////private Dictionary<string, QueryParameter> _params;
+        //public Query(string sql, params KeyValuePair<string, object>[] parameters) {
+        //    if (String.IsNullOrEmpty(sql)) throw new ArgumentNullException("The sql parameter is null/empty!");
+
+        //    this._sql = FilterSqlComments(sql);
+        //    this.Parameters = new List<QueryParameter>();
+        //    //this._params = new Dictionary<string, QueryParameter>();
+        //    if (this._sql.Trim().IndexOf(" ") < 0)///NO SPACES IN QUERY = STORED PROCEDURE CALL
+        //        this._type = CommandType.StoredProcedure;
+        //    else
+        //        this._type = CommandType.Text;
+
+        //    if (parameters == null || parameters.Length == 0)
+        //        return;
+
+        //    foreach (KeyValuePair<string, object> pair in parameters) {
+        //        this.Set(pair.Key, pair.Value);
+        //    }
+        //}
+
+
+
+        public Query(string sql) {
             this._sql = FilterSqlComments(sql);
-            this.Parameters = new List<QueryParameter>();
-            //this._params = new Dictionary<string, QueryParameter>();
-            if (this._sql.Trim().IndexOf(" ") < 0)///NO SPACES IN QUERY = STORED PROCEDURE CALL
-                this._type = CommandType.StoredProcedure;
-            else
-                this._type = CommandType.Text;
-
-            if (parameters == null || parameters.Length == 0)
-                return;
-
-            foreach (KeyValuePair<string, object> pair in parameters) {
-                this.Set(pair.Key, pair.Value);
-            }
+        }
+        public Query(string sql, QueryInfo info) {
+            this._sql = sql;
+            this._info = info;
+        }
+        public Query(string sql, List<QueryToken> tokens = null) {
+            this._sql = sql;
+            this._info = new QueryInfo(sql, tokens);
         }
         #endregion
+
+
+        internal QueryInfo Info {
+            get {
+                var info = this._info;
+                if (info != null)
+                    return info;
+                info = new QueryInfo(this._sql);
+                this._info = info;
+                return info;
+            }
+        }
 
 
         internal void Link(int dbID) {
@@ -51,8 +111,21 @@ namespace Strata.DB {
             return this.DB.Scalars(this);
         }
 
+        public int Insert() {
+            return this.DB.Insert(this);
+        }
 
-       
+        public int Update() {
+            return this.DB.Update(this);
+        }
+
+
+
+        #region -------- PUBLIC - Clone --------
+        public Query Clone() {
+            return new Query(this._sql, this.Info);
+        }
+        #endregion
 
         #region -------- PRIVATE STATIC - FilterSqlComments --------
         private static string FilterSqlComments(string sql) {
@@ -64,9 +137,65 @@ namespace Strata.DB {
 
         #region -------- PUBLIC STATIC - Create --------
         public static Query Create(string sql, params KeyValuePair<string, object>[] parameters) {
-            return (parameters == null) ? new Query(sql) : new Query(sql, parameters);
+            return (parameters == null) ? new Query(sql) : new Query(sql).Bind(parameters);
         }
         #endregion
+
+        public Query Bind(object o) {
+            //var raw = Strata.Util.Reflect.Decompose(o);
+            //var keys = raw.Keys;
+            
+            //var tokens = this.Tokens;
+            //if (tokens != null && tokens.Count > 0) {
+                
+            //    for (var i = 0; i < tokens.Count; i++) {
+            //        var token = tokens[i];
+            //        var name = token.name;
+            //        var key = keys.Where(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            //        if (key != null) {
+            //            var val = raw[key];
+            //            this.Set(key, val);
+            //        }
+            //    }
+            //    return this;
+            //}
+
+
+
+            var tokens = this.Tokens;
+            if (tokens != null && tokens.Count > 0) {
+                var wrap = new Reflect(o);
+                for (var i = 0; i < tokens.Count; i++) {
+                    var token = tokens[i];
+                    var name = token.name;
+                    var val = wrap[name];
+                    this.Set(name, val);
+                    //var key = keys.Where(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                    //if (key != null) {
+                    //    var val = raw[key];
+                    //    this.Set(key, val);
+                    //}
+                }
+                return this;
+            }
+
+
+            var raw = Strata.Util.Reflect.Decompose(o);
+            var keys = raw.Keys;
+            //var lst = new List<KeyValuePair<string, object>>();
+            foreach (var key in keys) {
+                var val = raw[key];
+                this.Set(key, val);
+            }
+            return this;
+        }
+
+        public Query Bind(KeyValuePair<string, object>[] parameters) {
+            foreach (KeyValuePair<string, object> pair in parameters) {
+                this.Set(pair.Key, pair.Value);
+            }
+            return this;
+        }
 
         //#region -------- PUBLIC - BindParams --------
         //public void BindParams(Record record) {
@@ -125,7 +254,10 @@ namespace Strata.DB {
         #region -------- PUBLIC - Get --------
         public QueryParameter Get(string parameterName) {
             Contract.Requires(!String.IsNullOrEmpty(parameterName));
-            return this.Parameters.Where(x => x.Name.Equals(parameterName, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            var parameters = this.Parameters;
+            if (parameters == null)
+                return null;
+            return parameters.Where(x => x.Name.Equals(parameterName, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
         }
         #endregion
 
@@ -134,12 +266,16 @@ namespace Strata.DB {
             return this.Set(new QueryParameter(parameterName));
         }
         public Query Set(string parameterName, ParameterDirection direction) {
+            if (direction == ParameterDirection.Output)
+                this._hasOutputParams = true;
             return this.Set(new QueryParameter(parameterName, direction));
         }
         public Query Set(string parameterName, object value) {
             return this.Set(new QueryParameter(parameterName, value));
         }
         public Query Set(string parameterName, object value, ParameterDirection direction) {
+            if (direction == ParameterDirection.Output)
+                this._hasOutputParams = true;
             return this.Set(new QueryParameter(parameterName, value, direction));
         }
 
@@ -154,13 +290,22 @@ namespace Strata.DB {
         public Query Set(QueryParameter parameter) {
             Contract.Requires(parameter != null);
             Contract.Requires(!this.Contains(parameter.Name));
-
-            var existing = this.Get(parameter.Name);
-            if (existing != null) {//duplicate, overwrite
-                this.Parameters.Remove(existing);
+            var parameters = this.Parameters;
+            if (parameters != null) {
+                var existing = this.Get(parameter.Name);
+                if (existing != null) {//duplicate, overwrite
+                    parameters.Remove(existing);
+                }
+            } else {
+                parameters = new List<QueryParameter>();
+                this.Parameters = parameters;
             }
+            
 
-            this.Parameters.Add(parameter);
+            if (parameter.Direction == ParameterDirection.Output)
+                this._hasOutputParams = true;
+
+            parameters.Add(parameter);
             return this;
         }
 
@@ -198,11 +343,62 @@ namespace Strata.DB {
         }
         #endregion
 
-        #region -------- PUBLIC - Clone --------
-        public Query Clone() {
-            return new Query(this._sql);
+        public Query Where(string column, List<string> values) {
+            var buffer = new StringBuilder();
+            buffer.Append("WHERE");
+            for (var i = 0; i < values.Count; i++) {
+                if (i > 0) {
+                    buffer.Append(" OR ");
+                }
+                var value = values[i];
+                buffer.Append(" " + column + "='" + value + "'");
+            }
+            buffer.Append(";");
+            return this.Concat(buffer.ToString());
         }
-        #endregion
+
+        public Query Where(string column, List<int> values) {
+            var buffer = new StringBuilder();
+            buffer.Append("WHERE");
+            for (var i = 0; i < values.Count; i++) {
+                if (i > 0) {
+                    buffer.Append(" OR ");
+                }
+                var value = values[i];
+                buffer.Append(" " + column + "=" + value.ToString() + "");
+            }
+            buffer.Append(";");
+            return this.Concat(buffer.ToString());
+        }
+
+        public Query Concat(string clause) {
+            var sql = this._sql.TrimEnd();
+            if (sql.EndsWith(";"))
+                sql = sql.Substring(0, sql.Length - 1);
+
+            var buffer = new StringBuilder();
+            buffer.Append(sql);
+            if (sql.ToLower().IndexOf(" where ") == -1){// && clause.ToLower().IndexOf(" where ") == -1) {
+                var lc = clause.ToLower();
+                if (lc.StartsWith("where") || lc.IndexOf(" where ") > -1) {
+                    if (lc.StartsWith("where"))
+                        buffer.Append(" ");
+                    buffer.Append(clause);
+                } else {
+                    buffer.Append(" WHERE " + clause);
+                }
+            } else {
+                buffer.Append(" AND (" + clause);
+            }
+            clause = clause.TrimEnd();
+            if (!clause.EndsWith(";"))
+                buffer.Append(";");
+
+            this._sql = buffer.ToString();
+            return this;
+        }
+
+
 
 
         #region -------- PUBLIC - Contains --------
@@ -255,11 +451,11 @@ namespace Strata.DB {
                 if (String.IsNullOrEmpty(value))
                     throw new System.Data.DataException("The specified sql query is not valid! query: \"" + ((value == null || value.Trim().Length == 0) ? "null/empty" : value) + "\""); //DataTool.GetStringValue(value) + "\"");
                 this._sql = value;
-
-                if (this._sql.Trim().IndexOf(" ") < 0)///NO SPACES IN QUERY = STORED PROCEDURE CALL
-                    this._type = CommandType.StoredProcedure;
-                else
-                    this._type = CommandType.Text;
+                this._info = null;
+                //if (this._sql.Trim().IndexOf(" ") < 0)///NO SPACES IN QUERY = STORED PROCEDURE CALL
+                //    this._type = CommandType.StoredProcedure;
+                //else
+                //    this._type = CommandType.Text;
             }
         }
 
@@ -273,13 +469,16 @@ namespace Strata.DB {
         //    get { return this._params; }
         //}
         public CommandType Type {
-            get { return this._type; }
+            get { return this.Info.type; }
         }
 
         //public bool IsSelect { 
         //    get { return (this._type == CommandType.Text && this._sql.Trim().ToLower().StartsWith("select")) ? true : false; } 
         //}
 
+        public List<QueryToken> Tokens {
+            get { return this.Info.tokens; }
+        }
 
         internal bool HasOutputParams {
             get { return this._hasOutputParams; }
@@ -313,6 +512,57 @@ namespace Strata.DB {
         // }
         //~Query() { this.Dispose(); }
         // #endregion
+
+
+
+        //    ix = 0
+        //    for c in sql:
+        //        ix = (ix + 1)
+        //        if c == ' ' or c == ',' or c == ';' or c == ')' or c == '\'' or c == '\r' or c == '\n':
+        //            if capture:
+        //                capture = False
+        //                tokenEnd = ix
+        //                tokens.append(Token(tokenBuffer, start_ix=tokenBegin, end_ix=tokenEnd))
+        //                tokenBuffer = ""
+        //                tokenBegin = 0
+        //                tokenEnd = 0
+        //            buffer.append(c)
+        //        else:
+        //            if capture:
+        //                tokenBuffer += c
+        //            else:
+        //                if c == '@':
+        //                    capture = True
+        //                    tokenBuffer = ""
+        //                    tokenBegin = ix
+        //                    buffer.append("?")
+        //                else:
+        //                    buffer.append(c)
+
+        //        prev = c
+
+        //    if tokenBegin and len(tokenBuffer) > 0:
+        //        tokens.append(Token(tokenBuffer, start_ix=tokenBegin, end_ix=ix))
+        //        tokenBuffer = None
+
+        //    sql = ''.join(buffer)
+
+        //    try:
+        //        buffer = []
+        //        ix = 0
+        //        for c in sql:
+        //            if c == '?':
+        //                buffer.append(':%s' % tokens[ix].name)
+        //                ix = (ix + 1)
+        //            else:
+        //                buffer.append(c)
+
+        //        sql = ''.join(buffer)
+        //        query = Query(sql, params=params)
+        //        query.tokens = tokens
+        //    except Exception, ex:
+        //        raise ex
+        //    return query
     }
 
 
@@ -339,4 +589,120 @@ namespace Strata.DB {
     //    #endregion
     //#endregion
     //}
+
+
+    public class QueryFactory {
+        public static Query Parse(string sql) {
+            if (sql.IndexOf("@") == -1)
+                return new Query(sql);
+
+            var buffer = new StringBuilder();
+            var ignore = false;
+            var capture = false;
+            List<QueryToken> tokens = new List<QueryToken>();
+
+            //buffer = []
+            //tokens = []
+            //tokenBegin = 0
+            //tokenEnd = 0
+            //tokenIndex = {}
+            //tokenBuffer = None
+
+            int ix = 0;
+            int startIX = 0;
+            //int endIX = 0;
+            StringBuilder token = null;
+            //char prev = ' ';
+            //char c = ' ';
+
+            int max = sql.Length;
+            for (ix = 0; ix < max; ix++) {
+                char c = sql[ix];
+                if (c == '\r' || c == '\n') {
+                    if (ignore)
+                        ignore = false;
+                } else if (!ignore && c == '-' && ix < (max - 1) && sql[ix + 1] == '-') {
+                    ix++;
+                    ignore = true;
+                }
+
+                if (ignore)
+                    continue;
+
+
+                if(c == ' ' || c == ',' || c == ';' || c == ')' || c == '\'' || c == '\r' || c == '\n'){
+                    if(capture){
+                        capture = false;
+                        tokens.Add(new QueryToken(token.ToString(), startIX, (ix + 1)));
+                        token = null;
+                        startIX = 0;
+                    }
+                    buffer.Append(c);
+                }else {
+                    if(capture)
+                        token.Append(c);
+                    else{
+                        if(c == '@'){
+                            capture = true;
+                            startIX = (ix + 1);
+                            token = new StringBuilder();
+                            buffer.Append("?");
+                        }else{
+                            buffer.Append(c);
+                        }
+                    }
+                }
+            }
+
+            if(token != null){
+                tokens.Add(new QueryToken(token.ToString(), startIX, ix));
+            }
+
+            sql = buffer.ToString();
+            var query = new Query(sql);
+            var hash = Strata.Crypto.Hash.MD5(sql);
+            query.Info.hash = hash;
+            if (tokens.Count > 0)
+                query.Info.tokens = tokens;
+            return query;
+        }
+    }
+
+
+    public class QueryToken {
+        public string name;
+        public int startIX;
+        public int endIX;
+        public QueryToken(string name, int startIX = 0, int endIX = 0) {
+            this.name = name;
+            this.startIX = startIX;
+            this.endIX = endIX;
+        }
+
+        public int Length {
+            get { return (this.endIX - this.startIX);}
+        }
+
+
+        public override string ToString() {
+            return "Token -> " + this.name;
+        }
+    }
+//class Token(object):
+//    __slots__ = [
+//        "name",
+//        "start_ix",
+//        "end_ix"
+//    ]
+//    def __init__(self, name, start_ix=0, end_ix=0):
+//        self.name = name
+//        self.start_ix = start_ix
+//        self.end_ix = end_ix
+
+//    @property
+//    def length(self):
+//        return (self.end_ix - self.start_ix)
+
+//    def __repr__(self):
+//        return "Token-> %s" % self.name
 }

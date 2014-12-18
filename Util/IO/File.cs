@@ -767,7 +767,8 @@ namespace Strata.Util.IO {
                 throw new ArgumentNullException("The path parameter is null/empty!");
 
             byte[] bytes = ReadBytes(path);
-            return System.Text.Encoding.Default.GetString(bytes);
+            return System.Text.Encoding.UTF8.GetString(bytes);
+            //return System.Text.Encoding.Default.GetString(bytes);
         }
 
         /// <summary>

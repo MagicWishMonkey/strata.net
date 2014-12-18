@@ -31,7 +31,13 @@ namespace Strata.DB.Drivers {
                     config.Username,
                     config.Password
                 );
-                str = "Driver={PostgreSQL UNICODE(x64)};" + str;
+                var dsn = config.DSN;
+                if(dsn != null)
+                    str = "DSN=" + dsn+";" + str;
+                else
+                    str = "Driver={PostgreSQL UNICODE(x64)};" + str;
+
+                Log.Trace(str);
                 return str;
                 //return "Driver={PostgreSQL UNICODE(x64)};Host=" + config.Server + ";Port=" + config.Port + ";Database=" + config.DBname + ";Uid=" + config.Username + ";Pwd=" + config.Password + ";";
                 //return "Host=" + config.Server + ";Port=5432;Database=" + config.DBname + ";User ID=" + config.Username + ";Password=" + config.Password + ";Pooling=true;Min Pool Size=0;Max Pool Size=100;Connection Lifetime=0;";
