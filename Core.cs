@@ -23,14 +23,6 @@ namespace Strata {
             this._databases = core._databases;
         }
 
-        //internal Core(UserAccount user) {
-        //    this._user = user;
-        //    var core = Core._instance;
-        //    this._databases = core._databases;
-        //}
-
-
-
         public Database Database {
             get {
                 if (this._databases == null) {
