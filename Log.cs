@@ -43,7 +43,6 @@ namespace Strata {
         #endregion
 
 
-
         #region -------- STATIC - DEBUG --------
         public static void Debug() {
             Trace("");
