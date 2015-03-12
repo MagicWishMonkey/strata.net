@@ -65,7 +65,39 @@ namespace Strata.Crypto {
             : this(new HMACSHA512(), Encoding.Default.GetBytes(input), Encoding.Default.GetBytes(salt), 1000) {
         }
 
+        
+        /// <summary>
+        /// Return a Base64 encoded PBKDF2 password string.
+        /// </summary>
+        /// <param name="username">The username string.</param>
+        /// <param name="password">The plaintext password string.</param>
+        /// <param name="salt">The salt string.</param>
+        /// <returns></returns>
+        public static string GeneratePassword(string username, string password, string salt) {
+            var input = username.Trim().ToLower();
+            input += "#" + password.Trim();
 
+            var pbk = new PBKDF2(input, salt);
+            var raw = pbk.GetBytes(256);
+            var txt = System.Text.Encoding.Default.GetString(raw);
+            var pwd = Convert.ToBase64String(raw);
+            return pwd;
+        }
+
+        /// <summary>
+        /// Return a Base64 encoded PBKDF2 password string.
+        /// </summary>
+        /// <param name="password">The plaintext password string.</param>
+        /// <param name="salt">The salt string.</param>
+        /// <returns></returns>
+        public static string GeneratePassword(string password, string salt) {
+            var input = password.Trim();
+            var pbk = new PBKDF2(input, salt);
+            var raw = pbk.GetBytes(256);
+            var txt = System.Text.Encoding.Default.GetString(raw);
+            var pwd = Convert.ToBase64String(raw);
+            return pwd;
+        }
 
 
         /// <summary>

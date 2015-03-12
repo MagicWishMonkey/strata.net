@@ -69,7 +69,6 @@ namespace Strata.Util {
         }
         #endregion
 
-
         #region -------- PUBLIC - IsInt --------
         //public static int TryParseInt(string txt, int defaultValue) {
         //    int val = defaultValue;
