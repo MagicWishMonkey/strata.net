@@ -34,7 +34,7 @@ namespace Strata.DB {
         #region -------- PUBLIC - Select/SelectTable --------
         public DataSet Select(Query query) {
             Log.Debug(query.Sql);
-
+            
             var cmd = this.CreateCommand(query);
             var adapter = this.CreateAdapter(cmd);
             DataSet ds = new DataSet();
@@ -66,10 +66,12 @@ namespace Strata.DB {
             IDbCommand command = this.CreateCommand(query);
             IDbConnection connection = command.Connection;
             IDbTransaction transaction = null;
+            
             try {
                 connection.Open();
                 transaction = connection.BeginTransaction();
                 command.Transaction = transaction;
+                //var id = command.ExecuteScalar(); 
                 var id = command.ExecuteNonQuery();
                 transaction.Commit();
                 transaction = null;

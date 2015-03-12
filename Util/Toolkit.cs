@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Runtime.Serialization.Formatters.Binary;
 using Strata.Util.Codecs;
 using Strata.Util.Codecs.JSON;
@@ -10,6 +11,8 @@ using Strata.Util.IO;
 
 namespace Strata.Util {
     public static class Toolkit {
+        //public delegate void FN();
+        //public delegate void Callback(object o);
 
         public static Func<TResult> Curry<T1, TResult>(Func<T1, TResult> function, T1 arg) {
             return () => function(arg);
@@ -39,6 +42,11 @@ namespace Strata.Util {
 
         public static int UnBase36(string data) {
             return Base36Formatter.Decode(data);
+        }
+
+        public static Worker Dispatch(FN fn) {
+            var w = new Worker(fn);
+            return w.Launch();
         }
 
 
@@ -147,6 +155,28 @@ namespace Strata.Util {
 
         public static string Hash(string data) {
             return Strata.Crypto.Hash.MD5(data);
+        }
+
+        public static string GUID(int length = 32){
+            if (length <= 32) { 
+                var uuid = System.Guid.NewGuid().ToString();
+                var txt = Strata.Crypto.Hash.MD5(uuid);
+                if (length < 32)
+                    txt = txt.Substring(0, length);
+                return txt;
+            }
+
+            var buffer = new System.Text.StringBuilder();
+            while (buffer.Length < length) {
+                var uuid = System.Guid.NewGuid().ToString();
+                var txt = Strata.Crypto.Hash.MD5(uuid);
+                buffer.Append(txt);
+            }
+
+            var str = buffer.ToString();
+            if (str.Length > length)
+                str = str.Substring(0, length);
+            return str;
         }
 
 

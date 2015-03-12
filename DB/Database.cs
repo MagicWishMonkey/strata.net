@@ -65,6 +65,20 @@ namespace Strata.DB {
         //    }
         //}
 
+        public dynamic Scalar(string sql) {
+            return this.Scalar(new Query(sql));
+        }
+
+        public dynamic Scalar(Query query) {
+            using (var txn = new DatabaseTransaction(this._driver)) {
+                var lst = txn.SelectTable(query).ToScalars();
+                if (lst.Count == 0)
+                    return null;
+                return lst[0];
+            }
+        }
+
+
         public List<dynamic> Scalars(string sql) {
             return this.Scalars(new Query(sql));
         }

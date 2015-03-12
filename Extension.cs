@@ -19,7 +19,6 @@ namespace Strata {
             return Context.Database.Scalars<T>(sql);
         }
 
-
         #region -------- DISPOSE/CLEANUP --------
         private bool _disposed = false;
         public void Cleanup() {}

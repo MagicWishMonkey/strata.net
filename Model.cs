@@ -12,7 +12,12 @@ namespace Strata {
             this.id = -1;
         }
 
-        public Repository Repository {
+
+        //public virtual Repository GetRepository {
+        //    return new Repository();
+        //}
+
+        public virtual Repository Repository {
             get {
                 return new Repository();
             }

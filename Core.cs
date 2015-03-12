@@ -29,8 +29,6 @@ namespace Strata {
         //    this._databases = core._databases;
         //}
 
-
-
         public Database Database {
             get {
                 if (this._databases == null) {

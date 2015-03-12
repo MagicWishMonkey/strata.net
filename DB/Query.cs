@@ -46,28 +46,8 @@ namespace Strata.DB {
         private QueryInfo _info = null;
         private string _sql;
         private bool _hasOutputParams = false;
-
-        ////private Dictionary<string, QueryParameter> _params;
-        //public Query(string sql, params KeyValuePair<string, object>[] parameters) {
-        //    if (String.IsNullOrEmpty(sql)) throw new ArgumentNullException("The sql parameter is null/empty!");
-
-        //    this._sql = FilterSqlComments(sql);
-        //    this.Parameters = new List<QueryParameter>();
-        //    //this._params = new Dictionary<string, QueryParameter>();
-        //    if (this._sql.Trim().IndexOf(" ") < 0)///NO SPACES IN QUERY = STORED PROCEDURE CALL
-        //        this._type = CommandType.StoredProcedure;
-        //    else
-        //        this._type = CommandType.Text;
-
-        //    if (parameters == null || parameters.Length == 0)
-        //        return;
-
-        //    foreach (KeyValuePair<string, object> pair in parameters) {
-        //        this.Set(pair.Key, pair.Value);
-        //    }
-        //}
-
-
+        private Converter<object, object> _adapter = null;
+        
 
         public Query(string sql) {
             this._sql = FilterSqlComments(sql);
@@ -81,6 +61,12 @@ namespace Strata.DB {
             this._info = new QueryInfo(sql, tokens);
         }
         #endregion
+
+
+        public Query AttachAdapter(Converter<object, object> fn) {
+            this._adapter = fn;
+            return this;
+        }
 
 
         internal QueryInfo Info {
@@ -103,12 +89,31 @@ namespace Strata.DB {
             return this.DB.SelectTable(this);
         }
 
+        public T Record<T>() {
+            var records = this.Records<T>();
+            if (records.Count == 0)
+                return default(T);
+            return records[0];
+        }
+
+        public List<T> Records<T>() {
+            System.Diagnostics.Debug.Assert((this._adapter != null), "The adapter is not defined!");
+
+            var lst = this.DB.Select(this);
+            var cpy = (from o in lst select (T)this._adapter(o)).ToList();
+            return cpy;
+        }
+
         public List<Dictionary<string, dynamic>> Select() {
             return this.DB.Select(this);
         }
 
         public List<dynamic> Scalars() {
             return this.DB.Scalars(this);
+        }
+
+        public dynamic Scalar() {
+            return this.DB.Scalar(this);
         }
 
         public int Insert() {
@@ -141,27 +146,17 @@ namespace Strata.DB {
         }
         #endregion
 
+        public Query Param(string name, object val) {
+            this.Set(name, val);
+            return this;
+        }
+
+        public Query Output(string name) {
+            this.Set(name, ParameterDirection.Output);
+            return this;
+        }
+
         public Query Bind(object o) {
-            //var raw = Strata.Util.Reflect.Decompose(o);
-            //var keys = raw.Keys;
-            
-            //var tokens = this.Tokens;
-            //if (tokens != null && tokens.Count > 0) {
-                
-            //    for (var i = 0; i < tokens.Count; i++) {
-            //        var token = tokens[i];
-            //        var name = token.name;
-            //        var key = keys.Where(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            //        if (key != null) {
-            //            var val = raw[key];
-            //            this.Set(key, val);
-            //        }
-            //    }
-            //    return this;
-            //}
-
-
-
             var tokens = this.Tokens;
             if (tokens != null && tokens.Count > 0) {
                 var wrap = new Reflect(o);
@@ -170,11 +165,6 @@ namespace Strata.DB {
                     var name = token.name;
                     var val = wrap[name];
                     this.Set(name, val);
-                    //var key = keys.Where(x => x.Equals(name, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                    //if (key != null) {
-                    //    var val = raw[key];
-                    //    this.Set(key, val);
-                    //}
                 }
                 return this;
             }
